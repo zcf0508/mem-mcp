@@ -202,7 +202,7 @@ services:
       context: ./memory-mcp
       dockerfile: Dockerfile
     ports:
-      - "3000:3000"
+      - '3000:3000'
     volumes:
       - ./data/memories:/app/memories
     environment:
@@ -229,7 +229,7 @@ Or use user mapping in docker-compose.yml:
 ```yaml
 services:
   memory-mcp-server:
-    user: "1000:1000"  # Your UID:GID
+    user: '1000:1000' # Your UID:GID
 ```
 
 ### Port Already in Use

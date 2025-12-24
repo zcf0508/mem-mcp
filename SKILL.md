@@ -152,7 +152,7 @@ Deletes a memory entry.
 ```
 User: "I'm starting a new web project using React and TypeScript"
 
-Action: 
+Action:
 1. Query: read_memory(query="React projects development setup")
 2. Use retrieved information to understand their setup patterns
 3. After discussion, save: write_memory(
