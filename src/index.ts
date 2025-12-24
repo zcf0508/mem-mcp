@@ -1,4 +1,3 @@
-import { AsyncLocalStorage } from 'node:async_hooks';
 import { createServer } from 'node:http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
@@ -7,10 +6,7 @@ import { deleteMemory, readMemories, updateMemory, writeMemory } from './mem.js'
 
 const PORT = 3000;
 
-// Store token for current request
-const tokenContext = new AsyncLocalStorage<string>();
-
-function createServer_() {
+function createServer_(token: string) {
   const server = new McpServer({
     name: 'memory-mcp-server',
     version: '1.0.0',
@@ -27,9 +23,6 @@ function createServer_() {
       },
     },
     async (params) => {
-      const token = tokenContext.getStore();
-      if (!token)
-        throw new Error('Token not found in context');
       const memories = readMemories(token, params.query);
       return {
         content: [
@@ -56,9 +49,6 @@ function createServer_() {
       },
     },
     async (params) => {
-      const token = tokenContext.getStore();
-      if (!token)
-        throw new Error('Token not found in context');
       const filename = writeMemory(token, params.title, params.content);
       return {
         content: [
@@ -84,9 +74,6 @@ function createServer_() {
       },
     },
     async (params) => {
-      const token = tokenContext.getStore();
-      if (!token)
-        throw new Error('Token not found in context');
       const success = updateMemory(token, params.filename, params.title, params.content);
       return {
         content: [
@@ -110,9 +97,6 @@ function createServer_() {
       },
     },
     async (params) => {
-      const token = tokenContext.getStore();
-      if (!token)
-        throw new Error('Token not found in context');
       const success = deleteMemory(token, params.filename);
       return {
         content: [
@@ -130,7 +114,7 @@ function createServer_() {
 
 const httpServer = createServer();
 
-httpServer.on('request', async (req, res) => {
+httpServer.on('request', (req, res) => {
   // Parse URL to extract token from /mcp/:token
   const url = new URL(req.url || '/', `http://${req.headers.host || 'localhost'}`);
   const pathParts = url.pathname.split('/').filter(Boolean);
@@ -138,39 +122,36 @@ httpServer.on('request', async (req, res) => {
   if (pathParts[0] === 'mcp' && pathParts[1]) {
     const token = pathParts[1];
 
-    // Run handler within token context
-    tokenContext.run(token, async () => {
-      // Create new server instance per request (to avoid state sharing)
-      const server = createServer_();
-      const transport = new StreamableHTTPServerTransport();
-      await server.connect(transport);
+    // Create new server instance per request (to avoid state sharing)
+    const server = createServer_(token);
+    const transport = new StreamableHTTPServerTransport();
+    server.connect(transport);
 
-      if (req.method === 'POST') {
-        // Collect body
-        let body = '';
-        req.on('data', (chunk) => {
-          body += chunk.toString();
-        });
-        req.on('end', async () => {
-          try {
-            const parsedBody = JSON.parse(body);
-            await transport.handleRequest(req, res, parsedBody);
-          }
-          catch {
-            res.writeHead(400, { 'Content-Type': 'application/json' });
-            res.end(JSON.stringify({ error: 'Invalid JSON' }));
-          }
-        });
-      }
-      else if (req.method === 'GET') {
-        // SSE stream
-        await transport.handleRequest(req, res);
-      }
-      else {
-        res.writeHead(405, { 'Content-Type': 'application/json' });
-        res.end(JSON.stringify({ error: 'Method Not Allowed' }));
-      }
-    });
+    if (req.method === 'POST') {
+      // Collect body
+      let body = '';
+      req.on('data', (chunk) => {
+        body += chunk.toString();
+      });
+      req.on('end', () => {
+        try {
+          const parsedBody = JSON.parse(body);
+          transport.handleRequest(req, res, parsedBody);
+        }
+        catch {
+          res.writeHead(400, { 'Content-Type': 'application/json' });
+          res.end(JSON.stringify({ error: 'Invalid JSON' }));
+        }
+      });
+    }
+    else if (req.method === 'GET') {
+      // SSE stream
+      transport.handleRequest(req, res);
+    }
+    else {
+      res.writeHead(405, { 'Content-Type': 'application/json' });
+      res.end(JSON.stringify({ error: 'Method Not Allowed' }));
+    }
   }
   else if (req.url === '/' && req.method === 'GET') {
     res.writeHead(200, { 'Content-Type': 'application/json' });
