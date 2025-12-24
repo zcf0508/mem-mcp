@@ -5,7 +5,7 @@ import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/
 import { readMemories, writeMemory, updateMemory, deleteMemory } from './mem.js'
 import { z } from 'zod'
 
-const PORT = 3000
+const PORT = parseInt(process.env.MCP_PORT || '3000', 10)
 
 // Store token for current request
 const tokenContext = new AsyncLocalStorage<string>()
