@@ -139,7 +139,7 @@ httpServer.on('request', async (req, res) => {
     const token = pathParts[1];
 
     // Run handler within token context
-    await tokenContext.run(token, async () => {
+    tokenContext.run(token, async () => {
       // Create new server instance per request (to avoid state sharing)
       const server = createServer_();
       const transport = new StreamableHTTPServerTransport();
