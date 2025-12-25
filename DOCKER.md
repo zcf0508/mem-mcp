@@ -80,8 +80,10 @@ MEMORIES_PATH=./data/memories docker-compose up -d
 ### Using Named Volume (Docker-managed)
 Edit `docker-compose.yml`:
 ```yaml
-volumes:
-  - memory-data:/app/memories
+services:
+  app:
+    volumes:
+      - memory-data:/app/memories
 
 volumes:
   memory-data:

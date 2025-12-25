@@ -1,6 +1,6 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
-import { join } from 'node:path';
+import { join, resolve } from 'node:path';
 import Fuse from 'fuse.js';
 
 const MEMORY_DIR = 'memories';
@@ -22,7 +22,60 @@ function ensureUserDir(token: string) {
 }
 
 /**
+ * Validate that a filename is safe and doesn't escape the user directory
+ */
+function validateFilename(filename: string): boolean {
+  // Normalize filename (ensure .md extension)
+  const normalizedFilename = filename.endsWith('.md') ? filename : `${filename}.md`;
+
+  // Check for path traversal attempts
+  if (normalizedFilename.includes('..') || normalizedFilename.includes('/') || normalizedFilename.includes('\\')) {
+    return false;
+  }
+
+  // Should only contain alphanumeric, dash, and .md extension
+  return /^[a-z0-9\-]+\.md$/.test(normalizedFilename);
+}
+
+/**
+ * Get safe filepath within user directory
+ */
+function getSafeFilepath(token: string, filename: string): string | null {
+  if (!validateFilename(filename)) {
+    return null;
+  }
+
+  const userDir = getUserDir(token);
+  const normalizedFilename = filename.endsWith('.md') ? filename : `${filename}.md`;
+  const filepath = join(userDir, normalizedFilename);
+
+  // Extra safety check: verify the resolved path is within userDir
+  const resolvedFilepath = resolve(filepath);
+  const resolvedUserDir = resolve(userDir);
+
+  if (!resolvedFilepath.startsWith(resolvedUserDir)) {
+    return null;
+  }
+
+  return filepath;
+}
+
+/**
+ * Extract title from markdown content (assumes first H1 is the title)
+ */
+function extractTitle(content: string): string {
+  const lines = content.split('\n');
+  for (const line of lines) {
+    if (line.startsWith('# ')) {
+      return line.slice(2).trim();
+    }
+  }
+  return 'Untitled';
+}
+
+/**
  * Read memories for a user, optionally filtered by query
+ * Returns formatted strings with metadata prefix for LLM consumption
  */
 export function readMemories(token: string, query?: string): string[] {
   ensureUserDir(token);
@@ -48,14 +101,22 @@ export function readMemories(token: string, query?: string): string[] {
       });
 
       const results = fuse.search(query);
-      return results.map(result => result.item.content);
+      return results.map(result => formatMemory(result.item));
     }
 
-    return memories.map((m: { file: string, content: string }) => m.content);
+    return memories.map(m => formatMemory(m));
   }
   catch {
     return [];
   }
+}
+
+/**
+ * Format memory item with metadata prefix for LLM consumption
+ */
+function formatMemory(memory: { file: string, content: string }): string {
+  const title = extractTitle(memory.content);
+  return `### Memory\n**filename:** ${memory.file}\n**title:** ${title}\n---\n${memory.content}`;
 }
 
 /**
@@ -83,34 +144,26 @@ export function writeMemory(token: string, title: string, content: string): stri
 
 /**
  * Update an existing memory for a user
+ * filename is immutable and used as the unique identifier
  */
 export function updateMemory(token: string, filename: string, title: string, content: string): boolean {
   ensureUserDir(token);
-  const userDir = getUserDir(token);
 
-  // If filename changed, we need to rename
-  const newFilename = `${title
-    .toLowerCase()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')}.md`;
+  // Validate and get safe filepath
+  const filepath = getSafeFilepath(token, filename);
+  if (!filepath) {
+    return false;
+  }
 
-  const oldPath = join(userDir, filename);
-  const newPath = join(userDir, newFilename);
-
-  // Check if old file exists
-  if (!existsSync(oldPath)) {
+  // Check if file exists
+  if (!existsSync(filepath)) {
     return false;
   }
 
   // Add metadata
   const fullContent = `# ${title}\n\n${content}\n\n---\n*Updated: ${new Date().toISOString()}*`;
 
-  writeFileSync(newPath, fullContent, 'utf-8');
-
-  // Delete old file if name changed
-  if (oldPath !== newPath && existsSync(oldPath)) {
-    unlinkSync(oldPath);
-  }
+  writeFileSync(filepath, fullContent, 'utf-8');
 
   return true;
 }
@@ -120,8 +173,12 @@ export function updateMemory(token: string, filename: string, title: string, con
  */
 export function deleteMemory(token: string, filename: string): boolean {
   ensureUserDir(token);
-  const userDir = getUserDir(token);
-  const filepath = join(userDir, filename);
+
+  // Validate and get safe filepath
+  const filepath = getSafeFilepath(token, filename);
+  if (!filepath) {
+    return false;
+  }
 
   if (!existsSync(filepath)) {
     return false;
