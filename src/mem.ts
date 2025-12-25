@@ -1,6 +1,7 @@
 import { randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
+import Fuse from 'fuse.js';
 
 const MEMORY_DIR = 'memories';
 
@@ -37,12 +38,17 @@ export function readMemories(token: string, query?: string): string[] {
 
     // Filter by query if provided
     if (query) {
-      return memories
-        .filter((m: { file: string, content: string }) =>
-          m.file.includes(query)
-          || m.content.toLowerCase().includes(query.toLowerCase()),
-        )
-        .map((m: { file: string, content: string }) => m.content);
+      // Use Fuse.js for fuzzy search with better recall
+      const fuse = new Fuse(memories, {
+        keys: ['file', 'content'],
+        threshold: 0.3, // Allow some fuzzy matching (0.3 = 70% match required)
+        includeScore: true,
+        minMatchCharLength: 2, // Minimum 2 characters to match
+        useExtendedSearch: true, // Enable extended search syntax
+      });
+
+      const results = fuse.search(query);
+      return results.map(result => result.item.content);
     }
 
     return memories.map((m: { file: string, content: string }) => m.content);
