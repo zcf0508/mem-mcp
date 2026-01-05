@@ -10,6 +10,25 @@ env:
   IMAGE_NAME: ${{ github.repository }}
 
 jobs:
+  changelogithub:
+    permissions:
+      id-token: write
+      contents: write
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v5
+        with:
+          fetch-depth: 0
+
+      - name: Set node
+        uses: actions/setup-node@v5
+        with:
+          node-version: lts/*
+
+      - run: npx changelogithub
+        env:
+          GITHUB_TOKEN: ${{secrets.GITHUB_TOKEN}}
+
   build-and-push:
     runs-on: ubuntu-latest
     permissions:
