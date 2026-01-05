@@ -19,19 +19,16 @@ COPY tsconfig.json ./
 # Build the app
 RUN pnpm build
 
-# Runtime stage - Caddy
-FROM caddy:2-alpine
+# Runtime stage - Node
+FROM node:22-alpine
 
 WORKDIR /app
 
 # Copy built files from builder
 COPY --from=builder /app/dist ./dist
 
-# Create Caddyfile
-RUN echo "[:3000] {\n  root * /app/dist\n  file_server\n  encode gzip\n}" > /etc/caddy/Caddyfile
-
 # Expose port
 EXPOSE 3000
 
-# Run Caddy
-CMD ["caddy", "run", "--config", "/etc/caddy/Caddyfile"]
+# Run the app
+CMD ["node", "dist/index.js"]

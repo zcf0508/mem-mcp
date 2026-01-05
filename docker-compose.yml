@@ -2,9 +2,7 @@ version: '3.8'
 
 services:
   memory-mcp-server:
-    build:
-      context: .
-      dockerfile: Dockerfile
+    image: ghcr.io/zcf0508/mem-mcp:latest
     container_name: memory-mcp-server
     ports:
       - '${MCP_PORT:-3000}:3000'
