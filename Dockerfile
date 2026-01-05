@@ -31,4 +31,4 @@ COPY --from=builder /app/dist ./dist
 EXPOSE 3000
 
 # Run the app
-CMD ["node", "dist/index.js"]
+CMD ["node", "dist/index.mjs"]
