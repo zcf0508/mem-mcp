@@ -66,11 +66,11 @@ function createServer_(token: string) {
     'update_memory',
     {
       title: 'Update Memory',
-      description: 'Update an existing memory for a user',
+      description: 'Update an existing memory for a user. IMPORTANT: Preserve the original content and only add or modify specific parts. Do NOT summarize or condense existing content. If adding new information, append it to the existing content. If correcting information, only change the specific incorrect parts.',
       inputSchema: {
         filename: z.string().describe('Current filename of the memory'),
         title: z.string().describe('New title of the memory'),
-        content: z.string().describe('New content of the memory'),
+        content: z.string().describe('New content of the memory. Must preserve original content - only append new information or modify specific parts, never summarize or condense.'),
       },
     },
     async (params) => {

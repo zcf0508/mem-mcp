@@ -63,8 +63,6 @@ Save information in these categories:
 
 ## How to Use the Memory API
 
-The Memory MCP Server is accessed via HTTP Streamable MCP transport at `/mcp/:token`
-
 ### Available Tools
 
 #### 1. read_memory
@@ -104,16 +102,22 @@ write_memory(
 ```
 
 #### 3. update_memory
-Updates an existing memory entry.
+Updates an existing memory entry. **Critical: Preserve original content.**
 
 **Input:**
 ```json
 {
   "filename": "current-filename.md",
   "title": "Updated title",
-  "content": "Updated content"
+  "content": "Updated content (must preserve original, only append or modify specific parts)"
 }
 ```
+
+**⚠️ Update Rules:**
+- NEVER summarize or condense existing content
+- Append new information to the end, or insert in the appropriate section
+- Only modify specific parts that conflict with new information
+- Original content length should be preserved (adding info = longer content)
 
 #### 4. delete_memory
 Deletes a memory entry.
@@ -137,7 +141,7 @@ Deletes a memory entry.
 1. **Immediate save**: User-explicit requests ("remember X", "note that")
 2. **Natural save points**: After discussion of personal details, after completing projects, when learning user preferences
 3. **Consolidate**: If updating existing memory, merge new information rather than creating duplicates
-4. **Summarize**: Keep entries concise and well-organized for future retrieval
+4. **Preserve original content**: When updating, NEVER summarize or condense existing content. Only append new information or modify specific conflicting parts. A 2000-word memory with 40 words of new info should result in ~2040 words, not 540 words.
 
 ### Format for Memory Entries
 - Use clear titles that are searchable keywords
