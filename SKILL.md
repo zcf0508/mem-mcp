@@ -1,6 +1,6 @@
 ---
 name: memory-management
-description: Manages long-term memory for users across conversations. Automatically queries relevant memories when starting a new topic, and saves important personal information, habits, schedules, and user-requested memories. Use this when: discussing user background, preferences, or plans; starting a new task or project; users mention personal details or ask to remember something.
+description: Manages long-term memory for users across conversations. Automatically queries relevant memories when starting a new topic, and saves important personal information, habits, schedules, and user-requested memories. Use this when discussing user background, preferences, or plans; starting a new task or project; users mention personal details or ask to remember something.
 ---
 
 # Memory Management Skill
