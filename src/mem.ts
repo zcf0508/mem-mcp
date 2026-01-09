@@ -91,17 +91,56 @@ export function readMemories(token: string, query?: string): string[] {
 
     // Filter by query if provided
     if (query) {
+      // Split query by spaces/symbols and search for all terms (AND logic)
+      const terms = query
+        .trim()
+        .split(/[\s\-_,;:]+/)
+        .filter(term => term.length > 0);
+
+      if (terms.length === 0) {
+        return memories.map(m => formatMemory(m));
+      }
+
       // Use Fuse.js for fuzzy search with better recall
       const fuse = new Fuse(memories, {
         keys: ['file', 'content'],
         threshold: 0.3, // Allow some fuzzy matching (0.3 = 70% match required)
         includeScore: true,
-        minMatchCharLength: 2, // Minimum 2 characters to match
+        minMatchCharLength: 1, // Reduced from 2 for better short-word matching
         useExtendedSearch: true, // Enable extended search syntax
       });
 
-      const results = fuse.search(query);
-      return results.map(result => formatMemory(result.item));
+      // Search with all terms combined (Fuse will handle OR by default)
+      // For AND logic: intersect results of each term search
+      const resultSets = terms.map((term) => {
+        const res = fuse.search(term);
+        return new Set(res.map(r => memories.indexOf(r.item)));
+      });
+
+      // Find memories that match ALL terms
+      let matchedIndices = resultSets[0] || new Set();
+      for (let i = 1; i < resultSets.length; i++) {
+        const current = resultSets[i];
+        matchedIndices = new Set([...matchedIndices].filter(x => current?.has(x)));
+      }
+
+      const results = Array.from(matchedIndices)
+        .map(idx => memories[idx])
+        .filter((m): m is typeof memories[0] => m !== undefined)
+        .sort((a, b) => {
+          // Re-score for sorting (prefer matches with more matching terms)
+          const scoreA = terms.filter(t =>
+            a.file.toLowerCase().includes(t.toLowerCase())
+            || a.content.toLowerCase().includes(t.toLowerCase()),
+          ).length;
+          const scoreB = terms.filter(t =>
+            b.file.toLowerCase().includes(t.toLowerCase())
+            || b.content.toLowerCase().includes(t.toLowerCase()),
+          ).length;
+          return scoreB - scoreA;
+        });
+
+      return results.map(m => formatMemory(m));
     }
 
     return memories.map(m => formatMemory(m));
