@@ -230,7 +230,7 @@ export function deleteMemory(token: string, filename: string): boolean {
 /**
  * List all memory titles for a user (for discovery/indexing)
  */
-export function listMemoryTitles(token: string): { filename: string; title: string }[] {
+export function listMemoryTitles(token: string): { filename: string, title: string }[] {
   ensureUserDir(token);
   const userDir = getUserDir(token);
 
