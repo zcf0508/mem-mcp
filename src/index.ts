@@ -2,6 +2,7 @@ import { createServer } from 'node:http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
+import pkg from '../package.json' with { type: 'json' };
 import { deleteMemory, listMemoryTitles, readMemories, updateMemory, writeMemory } from './mem.js';
 
 const PORT = 3000;
@@ -9,7 +10,7 @@ const PORT = 3000;
 function createServer_(token: string) {
   const server = new McpServer({
     name: 'memory-mcp-server',
-    version: '1.0.0',
+    version: pkg.version,
   });
 
   // Register read_memory tool
