@@ -14,6 +14,7 @@ A memory MCP (Model Context Protocol) server that allows AI assistants to store,
 
 | Tool | Description |
 |------|-------------|
+| `list_memory_titles` | List all memory titles for discovery (call first in new conversations) |
 | `read_memory` | Read memories, optionally filtered by query |
 | `write_memory` | Create a new memory with title and content |
 | `update_memory` | Update an existing memory |
