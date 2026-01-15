@@ -228,6 +228,25 @@ export function deleteMemory(token: string, filename: string): boolean {
 }
 
 /**
+ * List all memory titles for a user (for discovery/indexing)
+ */
+export function listMemoryTitles(token: string): { filename: string; title: string }[] {
+  ensureUserDir(token);
+  const userDir = getUserDir(token);
+
+  try {
+    const files = readdirSync(userDir).filter((f: string) => f.endsWith('.md'));
+    return files.map((file: string) => {
+      const content = readFileSync(join(userDir, file), 'utf-8');
+      return { filename: file, title: extractTitle(content) };
+    });
+  }
+  catch {
+    return [];
+  }
+}
+
+/**
  * Generate a new user token
  */
 export function generateToken(): string {

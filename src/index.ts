@@ -2,7 +2,7 @@ import { createServer } from 'node:http';
 import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
-import { deleteMemory, readMemories, updateMemory, writeMemory } from './mem.js';
+import { deleteMemory, listMemoryTitles, readMemories, updateMemory, writeMemory } from './mem.js';
 
 const PORT = 3000;
 
@@ -103,6 +103,29 @@ function createServer_(token: string) {
           {
             type: 'text' as const,
             text: success ? 'Memory deleted successfully' : 'Memory not found',
+          },
+        ],
+      };
+    },
+  );
+
+  // Register list_memory_titles tool
+  server.registerTool(
+    'list_memory_titles',
+    {
+      title: 'List Memory Titles',
+      description: 'List all memory titles for discovery. Call this FIRST in new conversations to see what memories exist before querying specific ones.',
+      inputSchema: {},
+    },
+    async () => {
+      const titles = listMemoryTitles(token);
+      return {
+        content: [
+          {
+            type: 'text' as const,
+            text: titles.length > 0
+              ? titles.map(t => `${t.filename}|${t.title}`).join('\n')
+              : 'No memories found',
           },
         ],
       };
