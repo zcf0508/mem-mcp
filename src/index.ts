@@ -30,7 +30,7 @@ function createServer_(token: string) {
             type: 'text' as const,
             text: memories.length > 0
               ? memories.join('\n\n---\n\n')
-              : 'No memories found',
+              : 'No memories found. Try `list_memory_titles` first to see all available memories.',
           },
         ],
       };
