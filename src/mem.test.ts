@@ -1,8 +1,15 @@
+import type { MemoryMeta } from './mem.js';
 import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
-import { type MemoryMeta, parseFrontmatter, serializeFrontmatter } from './mem.js';
-import { listMemoryTitles, readMemories, updateMemory, writeMemory } from './mem.js';
+import {
+  listMemoryTitles,
+  parseFrontmatter,
+  readMemories,
+  serializeFrontmatter,
+  updateMemory,
+  writeMemory,
+} from './mem.js';
 
 const TEST_TOKEN = `test-${Date.now()}`;
 const TEST_DIR = join('memories', TEST_TOKEN);
