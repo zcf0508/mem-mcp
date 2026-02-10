@@ -3,7 +3,15 @@ import { McpServer } from '@modelcontextprotocol/sdk/server/mcp.js';
 import { StreamableHTTPServerTransport } from '@modelcontextprotocol/sdk/server/streamableHttp.js';
 import { z } from 'zod';
 import pkg from '../package.json' with { type: 'json' };
-import { deleteMemory, listMemoryTitles, readMemories, updateMemory, writeMemory } from './mem.js';
+import {
+  deleteMemory,
+  evictMemories,
+  listMemoryTitles,
+  readMemories,
+  searchArchive,
+  updateMemory,
+  writeMemory,
+} from './mem.js';
 
 const PORT = 3000;
 
@@ -47,10 +55,11 @@ function createServer_(token: string) {
       inputSchema: {
         title: z.string().describe('Title of the memory'),
         content: z.string().describe('Content of the memory'),
+        priority: z.enum(['P0', 'P1', 'P2']).optional().describe('Priority level: P0=core/permanent, P1=project/90d, P2=temporary/30d. Default: P2'),
       },
     },
     async (params) => {
-      const filename = writeMemory(token, params.title, params.content);
+      const filename = writeMemory(token, params.title, params.content, params.priority);
       return {
         content: [
           {
@@ -72,10 +81,11 @@ function createServer_(token: string) {
         filename: z.string().describe('Current filename of the memory'),
         title: z.string().describe('New title of the memory'),
         content: z.string().describe('New content of the memory. Must preserve original content - only append new information or modify specific parts, never summarize or condense.'),
+        priority: z.enum(['P0', 'P1', 'P2']).optional().describe('Priority level: P0=core/permanent, P1=project/90d, P2=temporary/30d. Default: P2'),
       },
     },
     async (params) => {
-      const success = updateMemory(token, params.filename, params.title, params.content);
+      const success = updateMemory(token, params.filename, params.title, params.content, params.priority);
       return {
         content: [
           {
@@ -125,10 +135,62 @@ function createServer_(token: string) {
           {
             type: 'text' as const,
             text: titles.length > 0
-              ? titles.map(t => `${t.filename}|${t.title}`).join('\n')
+              ? titles.map(t => `${t.filename}|${t.title}|${t.priority}|${t.lastAccessedAt}`).join('\n')
               : 'No memories found',
           },
         ],
+      };
+    },
+  );
+
+  // Register search_archive tool
+  server.registerTool(
+    'search_archive',
+    {
+      title: 'Search Archive',
+      description: 'Search archived (evicted) memories. Use when current memories don\'t have the answer - old memories may be in the archive.',
+      inputSchema: {
+        query: z.string().describe('Search query to find in archived memories'),
+      },
+    },
+    async (params) => {
+      const results = searchArchive(token, params.query);
+      return {
+        content: [{
+          type: 'text' as const,
+          text: results.length > 0
+            ? results.join('\n\n---\n\n')
+            : 'No archived memories found matching the query.',
+        }],
+      };
+    },
+  );
+
+  // Register evict_memories tool
+  server.registerTool(
+    'evict_memories',
+    {
+      title: 'Evict Memories',
+      description: 'Run memory eviction sweep: archive P2 memories older than 30 days and P1 older than 90 days (based on last access time). P0 memories are never evicted.',
+      inputSchema: {
+        dryRun: z.boolean().optional().describe('Preview what would be evicted without actually archiving. Default: false'),
+      },
+    },
+    async (params) => {
+      const result = evictMemories(token, { dryRun: params.dryRun });
+      const lines = [
+        result.dryRun ? '## Dry Run Preview' : '## Eviction Complete',
+        `Archived: ${result.archived.length} memories`,
+        `Kept: ${result.kept.length} memories`,
+      ];
+      if (result.archived.length > 0) {
+        lines.push('', '### Archived:', ...result.archived.map(f => `- ${f}`));
+      }
+      return {
+        content: [{
+          type: 'text' as const,
+          text: lines.join('\n'),
+        }],
       };
     },
   );
